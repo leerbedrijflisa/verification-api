@@ -8,6 +8,7 @@ namespace Lisa.Verification.Api
         {
             Required("Document", NotEmpty, TypeOf(DataTypes.String));
             Required("User", NotEmpty, TypeOf(DataTypes.String));
+            Optional("Status", OneOf("pending", "accepted", "rejected"));
             Optional("Expires");
 
             Ignore("Id");
