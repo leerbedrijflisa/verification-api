@@ -1,8 +1,8 @@
 ﻿using Lisa.Common.TableStorage;
 using Lisa.Common.WebApi;
-using Microsoft.Extensions.OptionsModel;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Extensions.Options;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -44,7 +44,7 @@ namespace Lisa.Verification.Api
 
             return result;
         }
-
+        
         public async Task<DynamicModel> Fetch(string id)
         {
             CloudTable table = await GetTable("verifications");

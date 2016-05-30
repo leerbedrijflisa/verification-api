@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNet.Builder;
-using Microsoft.AspNet.Hosting;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Serialization;
+using System.IO;
 
 namespace Lisa.Verification.Api
 {
@@ -13,6 +14,7 @@ namespace Lisa.Verification.Api
         public Startup(IHostingEnvironment environment)
         {
             var builder = new ConfigurationBuilder()
+                .SetBasePath(environment.ContentRootPath)
                 .AddJsonFile("appsettings.json")
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
@@ -34,7 +36,6 @@ namespace Lisa.Verification.Api
 
         public void Configure(IApplicationBuilder app)
         {
-            app.UseIISPlatformHandler();
             app.UseCors(cors =>
             {
                 cors.AllowAnyOrigin()
@@ -44,6 +45,16 @@ namespace Lisa.Verification.Api
             app.UseMvc();
         }
 
-        public static void Main(string[] args) => WebApplication.Run<Startup>(args);
+        public static void Main(string[] args)
+        {
+            var host = new WebHostBuilder()
+                .UseKestrel()
+                .UseContentRoot(Directory.GetCurrentDirectory())
+                .UseIISIntegration()
+                .UseStartup<Startup>()
+                .Build();
+
+            host.Run();
+        }
     }
 }

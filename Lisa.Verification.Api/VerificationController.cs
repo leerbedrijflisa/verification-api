@@ -1,9 +1,7 @@
 ﻿using Lisa.Common.WebApi;
-using Microsoft.AspNet.Mvc;
-using Microsoft.Net.Http.Server;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Threading.Tasks;
 
 namespace Lisa.Verification.Api
@@ -24,9 +22,9 @@ namespace Lisa.Verification.Api
             IEnumerable<DynamicModel> models = await _db.FetchAll();
 
             if (models == null)
-                return new HttpNotFoundResult();
+                return new NotFoundResult();
 
-            return new HttpOkObjectResult(models);
+            return new OkObjectResult(models);
         }
 
         [HttpGet("{guid:guid}", Name = "getSingle")]
@@ -35,9 +33,9 @@ namespace Lisa.Verification.Api
             DynamicModel model = await _db.Fetch(guid.ToString());
 
             if (model == null)
-                return new HttpNotFoundResult();
+                return new NotFoundResult();
 
-            return new HttpOkObjectResult(model);
+            return new OkObjectResult(model);
         }
 
         [HttpPost]
@@ -48,7 +46,7 @@ namespace Lisa.Verification.Api
 
             var validationResult = _validator.Validate(verification);
             if (validationResult.HasErrors)
-                return new UnprocessableEntityObjectResult(validationResult.Errors);
+                return new UnprocessableEntityObjectResult(validationResult.Errors) as IActionResult;
 
             dynamic result = await _db.Post(verification);
 
@@ -66,21 +64,21 @@ namespace Lisa.Verification.Api
             model.Signed = DateTime.Now;
 
             if (model == null)
-                return new HttpNotFoundResult();
+                return new NotFoundResult();
 
             if (model.Status != "pending" ||
                 DateTime.Compare(model.Expires.ToUniversalTime(), model.Signed.ToUniversalTime()) < 0)
-                return new HttpStatusCodeResult(403);
+                return new StatusCodeResult(403);
 
             ValidationResult validationResult = _validator.Validate(patches, model);
             if (validationResult.HasErrors)
-                return new UnprocessableEntityObjectResult(validationResult.Errors);
+                return new UnprocessableEntityObjectResult(validationResult.Errors) as IActionResult;
 
             _modelPatcher.Apply(patches, model);
 
             model = await _db.Patch(model);
 
-            return new HttpOkObjectResult(model);
+            return new OkObjectResult(model);
         }
 
         private Database _db;
