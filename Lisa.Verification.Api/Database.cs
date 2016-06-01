@@ -67,7 +67,7 @@ namespace Lisa.Verification.Api
             verification.SetMetadata(new { PartitionKey = guid, RowKey = guid });
             verification.Id = guid;
             verification.Status = "pending";
-            if (verification.Expires == "")
+            if (!(verification.Expires is DateTime) && verification.Expires == "")
                 verification.Expires = DateTime.MaxValue;
 
             var insertOperation = TableOperation.Insert(VerificationMapper.ToEntity(verification));
