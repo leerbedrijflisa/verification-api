@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace Lisa.Verification.Api
@@ -32,6 +33,17 @@ namespace Lisa.Verification.Api
         {
             DynamicModel model = await _db.Fetch(guid.ToString());
 
+            DynamicModel app = await _db.FetchApplication(((dynamic)model).Application);
+
+            byte[] key = System.Text.ASCIIEncoding.ASCII.GetBytes(((dynamic)app).Secret);
+            hmac = new HMACSHA256(key);
+
+            string storedHash   = Request.Headers["Authorization"];
+            string computedHash = ComputeHash(guid.ToString(), ((dynamic)app).Secret);
+
+            if (storedHash != computedHash)
+                return new StatusCodeResult(401);
+
             if (model == null)
                 return new NotFoundResult();
 
@@ -43,6 +55,18 @@ namespace Lisa.Verification.Api
         {
             if (verification == null)
                 return new BadRequestResult();
+
+            // expire date has already been passed, no point in storing the verification
+            DateTime t1 = ((dynamic)verification).expires;
+            if (DateTime.Compare(t1.ToUniversalTime(), DateTime.Now.ToUniversalTime()) < 0)
+                return new StatusCodeResult(422);
+
+            // new applications stuff
+            string appName = ((dynamic)verification).application;
+            DynamicModel app = await _db.FetchApplication(appName);
+            if (app == null)
+                await _db.PostApplication(appName);
+            
 
             var validationResult = _validator.Validate(verification);
             if (validationResult.HasErrors)
@@ -80,6 +104,23 @@ namespace Lisa.Verification.Api
 
             return new OkObjectResult(model);
         }
+
+
+        private static string ComputeHash(string body, string secret)
+        {
+            // Authorization = base64(hmacsha256(base64(body) + secret))
+            return Base64Encode(System.Text.Encoding.ASCII.GetString(
+                hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(
+                    Base64Encode(body) + secret))));
+        }
+
+        private static string Base64Encode(string plainText)
+        {
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
+            return Convert.ToBase64String(plainTextBytes);
+        }
+
+        private static HMACSHA256 hmac;
 
         private Database _db;
         private ModelPatcher _modelPatcher;

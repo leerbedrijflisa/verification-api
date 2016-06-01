@@ -19,6 +19,7 @@ namespace Lisa.Verification.Api
             Connect();
         }
 
+        // general functions
         public void Connect()
         {
             _account = CloudStorageAccount.Parse(_settings.ConnectionString);
@@ -33,6 +34,8 @@ namespace Lisa.Verification.Api
             return table;
         }
 
+
+        // verification functions
         public async Task<IEnumerable<DynamicModel>> FetchAll()
         {
             CloudTable table = await GetTable("verifications");
@@ -86,6 +89,38 @@ namespace Lisa.Verification.Api
             await table.ExecuteAsync(patchOperation);
 
             return model;
+        }
+
+
+        // application functions
+        public async Task<DynamicModel> FetchApplication(string name)
+        {
+            CloudTable table = await GetTable("applications");
+
+            var query = TableOperation.Retrieve<DynamicEntity>(name, name);
+            var result = (await table.ExecuteAsync(query)).Result;
+
+            if (result == null)
+                return null;
+
+            return ApplicationMapper.ToModel(result);
+        }
+
+        public async Task<DynamicModel> PostApplication(string application)
+        {
+            CloudTable table = await GetTable("applications");
+
+            dynamic app = new DynamicModel();
+            app.PartitionKey = application;
+            app.RowKey = application;
+            app.Name = application;
+            app.Secret = "";
+
+            var insertOperation = TableOperation.Insert(ApplicationMapper.ToEntity(app));
+
+            var result = (await table.ExecuteAsync(insertOperation)).Result;
+
+            return VerificationMapper.ToModel(result);
         }
 
         private TableStorageSettings _settings;

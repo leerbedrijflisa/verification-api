@@ -6,18 +6,19 @@ namespace Lisa.Verification.Api
     {
         protected override void ValidateModel()
         {
-            Required("Document", NotEmpty, TypeOf(DataTypes.String));
-            Required("User", NotEmpty, TypeOf(DataTypes.String));
-            Optional("Status", OneOf("pending", "accepted", "rejected"));
-            Optional("Expires");
+            Required("document", NotEmpty, TypeOf(DataTypes.String));
+            Required("application", NotEmpty, TypeOf(DataTypes.String));
+            Required("user", NotEmpty, TypeOf(DataTypes.String));
+            Optional("status", OneOf("pending", "accepted", "rejected"));
+            Optional("expires");
 
-            Ignore("Id");
-            Ignore("Signed");
+            Ignore("id");
+            Ignore("signed");
         }
 
         protected override void ValidatePatch()
         {
-            Allow("Status");
+            Allow("status");
         }
     }
 }

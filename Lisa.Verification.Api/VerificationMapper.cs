@@ -32,6 +32,7 @@ namespace Lisa.Verification.Api
                 entity.Id = model.Id;
             }
 
+            entity.Application = model.Application;
             entity.Document = model.Document;
             entity.User = model.User;
             entity.Status = model.Status;
@@ -59,6 +60,7 @@ namespace Lisa.Verification.Api
 
             model.Id = entity.Id;
             model.Document = entity.Document;
+            model.Application = entity.Application;
             model.User = entity.User;
             model.Status = entity.Status;
             model.Signed = entity.Signed ?? "";
