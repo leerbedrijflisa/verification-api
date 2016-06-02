@@ -17,37 +17,19 @@ namespace Lisa.Verification.Api
             _validator = new VerificationValidator();
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            IEnumerable<DynamicModel> models = await _db.FetchAll();
-
-            if (models == null)
-                return new NotFoundResult();
-
-            return new OkObjectResult(models);
-        }
 
         [HttpGet("{guid:guid}", Name = "getSingle")]
         public async Task<IActionResult> Get(Guid guid)
         {
-            DynamicModel model = await _db.Fetch(guid.ToString());
+            DynamicModel verification = await _db.Fetch(guid.ToString());
+             
+            if (!CompareTokens(await GetSecret(verification), guid.ToString()))
+                return new UnauthorizedResult();
 
-            DynamicModel app = await _db.FetchApplication(((dynamic)model).Application);
-
-            byte[] key = System.Text.ASCIIEncoding.ASCII.GetBytes(((dynamic)app).Secret);
-            hmac = new HMACSHA256(key);
-
-            string storedHash   = Request.Headers["Authorization"];
-            string computedHash = ComputeHash(guid.ToString(), ((dynamic)app).Secret);
-
-            if (storedHash != computedHash)
-                return new StatusCodeResult(401);
-
-            if (model == null)
+            if (verification == null)
                 return new NotFoundResult();
 
-            return new OkObjectResult(model);
+            return new OkObjectResult(verification);
         }
 
         [HttpPost]
@@ -56,21 +38,31 @@ namespace Lisa.Verification.Api
             if (verification == null)
                 return new BadRequestResult();
 
+            if (!CompareTokens(await GetSecret(verification), Newtonsoft.Json.JsonConvert.SerializeObject(verification)))
+                return new UnauthorizedResult();
+            
+            string guid = Guid.NewGuid().ToString();
+
+            verification.SetMetadata(new { PartitionKey = guid, RowKey = guid });
+            ((dynamic)verification).id = guid;
+            ((dynamic)verification).status = "pending";
+            if (!(((dynamic)verification).expires is DateTime) && ((dynamic)verification).expires == "")
+                ((dynamic)verification).expires = DateTime.MaxValue;
+
             // expire date has already been passed, no point in storing the verification
             DateTime t1 = ((dynamic)verification).expires;
             if (DateTime.Compare(t1.ToUniversalTime(), DateTime.Now.ToUniversalTime()) < 0)
-                return new StatusCodeResult(422);
+                return new UnprocessableEntityObjectResult(t1);
 
             // new applications stuff
             string appName = ((dynamic)verification).application;
             DynamicModel app = await _db.FetchApplication(appName);
             if (app == null)
                 await _db.PostApplication(appName);
-            
 
             var validationResult = _validator.Validate(verification);
             if (validationResult.HasErrors)
-                return new UnprocessableEntityObjectResult(validationResult.Errors) as IActionResult;
+                return new UnprocessableEntityObjectResult(validationResult.Errors);
 
             dynamic result = await _db.Post(verification);
 
@@ -84,33 +76,61 @@ namespace Lisa.Verification.Api
             if (patches == null)
                 return new BadRequestResult();
 
-            dynamic model = await _db.Fetch(guid.ToString());
-            model.Signed = DateTime.Now;
+            dynamic verification = await _db.Fetch(guid.ToString());
+            verification.Signed = DateTime.Now;
 
-            if (model == null)
+            if (!CompareTokens(await GetSecret(verification), Newtonsoft.Json.JsonConvert.SerializeObject(patches)))
+                return new UnauthorizedResult();
+
+            if (verification == null)
                 return new NotFoundResult();
 
-            if (model.Status != "pending" ||
-                DateTime.Compare(model.Expires.ToUniversalTime(), model.Signed.ToUniversalTime()) < 0)
+            if (verification.Status != "pending" ||
+                DateTime.Compare(verification.Expires.ToUniversalTime(), verification.Signed.ToUniversalTime()) < 0)
                 return new StatusCodeResult(403);
 
-            ValidationResult validationResult = _validator.Validate(patches, model);
+            ValidationResult validationResult = _validator.Validate(patches, verification);
             if (validationResult.HasErrors)
-                return new UnprocessableEntityObjectResult(validationResult.Errors) as IActionResult;
+                return new UnprocessableEntityObjectResult(validationResult.Errors);
 
-            _modelPatcher.Apply(patches, model);
+            _modelPatcher.Apply(patches, verification);
 
-            model = await _db.Patch(model);
+            verification = await _db.Patch(verification);
 
-            return new OkObjectResult(model);
+            return new OkObjectResult(verification);
         }
 
 
+        public async Task<string> GetSecret(dynamic verification)
+        {
+            dynamic app = await _db.FetchApplication(((dynamic)verification).application);
+            return app.Secret;
+        }
+
+        public bool CompareTokens(string secret, string body)
+        {
+            // use the secret as key when instantiating an HMACSHA256 object
+            byte[] key = System.Text.Encoding.ASCII.GetBytes(secret);
+            hmac = new HMACSHA256(key);
+
+            string storedHash = Request.Headers["Authorization"];
+            string computedHash = ComputeHash(body, secret);
+
+            return computedHash == storedHash;
+        }
+
         private static string ComputeHash(string body, string secret)
         {
-            // Authorization = base64(hmacsha256(base64(body) + secret))
+            //string bodySecret = Base64Encode(body) + secret;
+            //byte[] bodySecretBytes = System.Text.Encoding.ASCII.GetBytes(bodySecret);
+            //byte[] hash = hmac.ComputeHash(bodySecretBytes);
+            //string hashString = System.Text.Encoding.ASCII.GetString(hash);
+            //string hashed = Base64Encode(hashString);
+            //return hashed;
+
+            // formula = base64(hmacsha256(base64(body) + secret))
             return Base64Encode(System.Text.Encoding.ASCII.GetString(
-                hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(
+                hmac.ComputeHash(System.Text.Encoding.ASCII.GetBytes(
                     Base64Encode(body) + secret))));
         }
 
@@ -121,7 +141,6 @@ namespace Lisa.Verification.Api
         }
 
         private static HMACSHA256 hmac;
-
         private Database _db;
         private ModelPatcher _modelPatcher;
         private VerificationValidator _validator;

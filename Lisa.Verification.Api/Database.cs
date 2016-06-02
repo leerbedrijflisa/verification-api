@@ -65,14 +65,6 @@ namespace Lisa.Verification.Api
         {
             CloudTable table = await GetTable("verifications");
 
-            string guid = Guid.NewGuid().ToString();
-
-            verification.SetMetadata(new { PartitionKey = guid, RowKey = guid });
-            verification.Id = guid;
-            verification.Status = "pending";
-            if (!(verification.Expires is DateTime) && verification.Expires == "")
-                verification.Expires = DateTime.MaxValue;
-
             var insertOperation = TableOperation.Insert(VerificationMapper.ToEntity(verification));
 
             var result = (await table.ExecuteAsync(insertOperation)).Result;
