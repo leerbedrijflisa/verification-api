@@ -1,7 +1,6 @@
 ﻿using Lisa.Common.WebApi;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -42,23 +41,27 @@ namespace Lisa.Verification.Api
                 return new UnauthorizedResult();
             
             string guid = Guid.NewGuid().ToString();
-
             verification.SetMetadata(new { PartitionKey = guid, RowKey = guid });
-            ((dynamic)verification).id = guid;
-            ((dynamic)verification).status = "pending";
-            if (!(((dynamic)verification).expires is DateTime) && ((dynamic)verification).expires == "")
-                ((dynamic)verification).expires = DateTime.MaxValue;
+
+            // temporary dynamic object so you dont have to cast the DynamicModel to a dynamic object 
+            // each time you want to assign or retrieve a property
+            dynamic dynamicVerification = verification;
+            dynamicVerification.id = guid;
+            dynamicVerification.status = "pending";
+            if (!(dynamicVerification.expires is DateTime) && dynamicVerification.expires == "")
+                dynamicVerification.expires = DateTime.MaxValue;
 
             // expire date has already been passed, no point in storing the verification
-            DateTime t1 = ((dynamic)verification).expires;
+            DateTime t1 = dynamicVerification.expires;
             if (DateTime.Compare(t1.ToUniversalTime(), DateTime.Now.ToUniversalTime()) < 0)
-                return new UnprocessableEntityObjectResult(t1);
+                return new UnprocessableEntityObjectResult(verification);
 
-            // new applications stuff
-            string appName = ((dynamic)verification).application;
+            string appName = dynamicVerification.application;
             DynamicModel app = await _db.FetchApplication(appName);
             if (app == null)
-                await _db.PostApplication(appName);
+                return new UnauthorizedResult();
+
+            verification = dynamicVerification;
 
             var validationResult = _validator.Validate(verification);
             if (validationResult.HasErrors)
@@ -85,9 +88,8 @@ namespace Lisa.Verification.Api
             if (verification == null)
                 return new NotFoundResult();
 
-            if (verification.Status != "pending" ||
-                DateTime.Compare(verification.Expires.ToUniversalTime(), verification.Signed.ToUniversalTime()) < 0)
-                return new StatusCodeResult(403);
+            if (verification.Status != "pending" || DateTime.Compare(verification.Expires.ToUniversalTime(), verification.Signed.ToUniversalTime()) < 0)
+                return new ForbidResult();
 
             ValidationResult validationResult = _validator.Validate(patches, verification);
             if (validationResult.HasErrors)
@@ -104,11 +106,17 @@ namespace Lisa.Verification.Api
         public async Task<string> GetSecret(dynamic verification)
         {
             dynamic app = await _db.FetchApplication(((dynamic)verification).application);
+
+            if (app == null)
+                return null;
             return app.Secret;
         }
 
         public bool CompareTokens(string secret, string body)
         {
+            if (secret == null)
+                return false;
+
             // use the secret as key when instantiating an HMACSHA256 object
             byte[] key = System.Text.Encoding.ASCII.GetBytes(secret);
             hmac = new HMACSHA256(key);
@@ -116,11 +124,15 @@ namespace Lisa.Verification.Api
             string storedHash = Request.Headers["Authorization"];
             string computedHash = ComputeHash(body, secret);
 
+            // compare the stored hash (the has the user sends with the header) to the newly computed hash. 
+            // if they dont match it means that OR the user has send the wrong hash (wrong secret) 
+            // OR someone changed data in the body
             return computedHash == storedHash;
         }
 
         private static string ComputeHash(string body, string secret)
         {
+            // uncomment these if you want to see what happens each step when hashing
             //string bodySecret = Base64Encode(body) + secret;
             //byte[] bodySecretBytes = System.Text.Encoding.ASCII.GetBytes(bodySecret);
             //byte[] hash = hmac.ComputeHash(bodySecretBytes);
