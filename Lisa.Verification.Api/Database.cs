@@ -72,15 +72,15 @@ namespace Lisa.Verification.Api
             return VerificationMapper.ToModel(result);
         }
 
-        public async Task<DynamicModel> Patch(dynamic model)
+        public async Task<DynamicModel> Patch(dynamic verification)
         {
             CloudTable table = await GetTable("verifications");
 
-            var patchOperation = TableOperation.InsertOrReplace(VerificationMapper.ToEntity(model));
+            var patchOperation = TableOperation.InsertOrReplace(VerificationMapper.ToEntity(verification));
 
             await table.ExecuteAsync(patchOperation);
 
-            return model;
+            return verification;
         }
 
 

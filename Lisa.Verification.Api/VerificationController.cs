@@ -1,6 +1,7 @@
 ﻿using Lisa.Common.WebApi;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -22,7 +23,7 @@ namespace Lisa.Verification.Api
         {
             DynamicModel verification = await _db.Fetch(guid.ToString());
              
-            if (!CompareTokens(await GetSecret(verification), guid.ToString()))
+            if (!CompareTokens(await GetSecret(verification), guid.ToString(), Request.Headers["Authorization"]))
                 return new UnauthorizedResult();
 
             if (verification == null)
@@ -37,7 +38,7 @@ namespace Lisa.Verification.Api
             if (verification == null)
                 return new BadRequestResult();
 
-            if (!CompareTokens(await GetSecret(verification), Newtonsoft.Json.JsonConvert.SerializeObject(verification)))
+            if (!CompareTokens(await GetSecret(verification), Newtonsoft.Json.JsonConvert.SerializeObject(verification), Request.Headers["Authorization"])))
                 return new UnauthorizedResult();
             
             string guid = Guid.NewGuid().ToString();
@@ -61,6 +62,7 @@ namespace Lisa.Verification.Api
             if (app == null)
                 return new UnauthorizedResult();
 
+
             verification = dynamicVerification;
 
             var validationResult = _validator.Validate(verification);
@@ -82,7 +84,7 @@ namespace Lisa.Verification.Api
             dynamic verification = await _db.Fetch(guid.ToString());
             verification.Signed = DateTime.Now;
 
-            if (!CompareTokens(await GetSecret(verification), Newtonsoft.Json.JsonConvert.SerializeObject(patches)))
+            if (!CompareTokens(await GetSecret(verification), Newtonsoft.Json.JsonConvert.SerializeObject(patches), Request.Headers["Authorization"]))
                 return new UnauthorizedResult();
 
             if (verification == null)
@@ -102,17 +104,16 @@ namespace Lisa.Verification.Api
             return new OkObjectResult(verification);
         }
 
-
         public async Task<string> GetSecret(dynamic verification)
         {
-            dynamic app = await _db.FetchApplication(((dynamic)verification).application);
+            dynamic app = await _db.FetchApplication(verification.application);
 
             if (app == null)
                 return null;
             return app.Secret;
         }
 
-        public bool CompareTokens(string secret, string body)
+        public bool CompareTokens(string secret, string body, string storedHash)
         {
             if (secret == null)
                 return false;
@@ -121,12 +122,11 @@ namespace Lisa.Verification.Api
             byte[] key = System.Text.Encoding.ASCII.GetBytes(secret);
             hmac = new HMACSHA256(key);
 
-            string storedHash = Request.Headers["Authorization"];
             string computedHash = ComputeHash(body, secret);
 
             // compare the stored hash (the has the user sends with the header) to the newly computed hash. 
             // if they dont match it means that OR the user has send the wrong hash (wrong secret) 
-            // OR someone changed data in the body
+            // OR someone changed data in the body or secret
             return computedHash == storedHash;
         }
 
