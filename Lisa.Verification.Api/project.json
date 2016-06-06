@@ -63,16 +63,18 @@
       ]
     }
   },
+    "runtimeOptions": {
+	  "gcServer": true
+  },
   "publishOptions": {
-    "include": [
-      "wwwroot",
-      "Views",
-      "appsettings.json",
-      "web.config"
-    ],
-    "exclude": [
-      "wwwroot",
-      "node_modules"
-    ]
+	  "include": [
+		  "wwwroot",
+		  "Views",
+		  "appsettings.json",
+		  "web.config"
+	  ]
+  },
+  "scripts": {
+    "postpublish": [ "dotnet publish-iis --publish-folder %publish:OutputPath% --framework %publish:FullTargetFramework%" ]
   }
 }
