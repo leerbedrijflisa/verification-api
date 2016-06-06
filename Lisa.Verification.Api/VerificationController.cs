@@ -57,7 +57,7 @@ namespace Lisa.Verification.Api
             // expire date has already been passed, no point in storing the verification
             DateTime t1 = verification.expires;
             if (DateTime.Compare(t1.ToUniversalTime(), DateTime.Now.ToUniversalTime()) < 0)
-                return new UnprocessableEntityObjectResult(verification);
+                return new UnprocessableEntityObjectResult("Invalid field \'expires\': " + t1);
 
             string appName = verification.application;
             DynamicModel app = await _db.FetchApplication(appName);
@@ -82,10 +82,11 @@ namespace Lisa.Verification.Api
                 return new BadRequestResult();
 
             dynamic verification = await _db.Fetch(guid.ToString());
-            verification.Signed = DateTime.Now;
 
             if (verification == null)
                 return new NotFoundResult();
+
+            verification.Signed = DateTime.Now;
 
             if (!CompareTokens(await GetSecret(verification.application), Newtonsoft.Json.JsonConvert.SerializeObject(patches), Request.Headers["Authorization"]))
                 return new UnauthorizedResult();
