@@ -1,7 +1,6 @@
 ﻿using Lisa.Common.WebApi;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -16,7 +15,6 @@ namespace Lisa.Verification.Api
             _modelPatcher = new ModelPatcher();
             _validator = new VerificationValidator();
         }
-
 
         [HttpGet("{guid:guid}", Name = "getSingle")]
         public async Task<IActionResult> Get(Guid guid)
@@ -41,6 +39,9 @@ namespace Lisa.Verification.Api
             if (verification == null)
                 return new BadRequestResult();
 
+            if (verification.application == null)
+                return new UnauthorizedResult();
+
             if (!CompareTokens(await GetSecret(verification.application), Newtonsoft.Json.JsonConvert.SerializeObject(verification), Request.Headers["Authorization"]))
                 return new UnauthorizedResult();
             
@@ -63,7 +64,6 @@ namespace Lisa.Verification.Api
             DynamicModel app = await _db.FetchApplication(appName);
             if (app == null)
                 return new UnauthorizedResult();
-
 
             var validationResult = _validator.Validate(verification);
             if (validationResult.HasErrors)
