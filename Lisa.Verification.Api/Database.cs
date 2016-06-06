@@ -52,8 +52,8 @@ namespace Lisa.Verification.Api
         {
             CloudTable table = await GetTable("verifications");
 
-            var query = TableOperation.Retrieve<DynamicEntity>(id, id);
-            var result = (await table.ExecuteAsync(query)).Result;
+            var retrieveOperation = TableOperation.Retrieve<DynamicEntity>(id, id);
+            var result = (await table.ExecuteAsync(retrieveOperation)).Result;
 
             if (result == null)
                 return null;
@@ -66,7 +66,6 @@ namespace Lisa.Verification.Api
             CloudTable table = await GetTable("verifications");
 
             var insertOperation = TableOperation.Insert(VerificationMapper.ToEntity(verification));
-
             var result = (await table.ExecuteAsync(insertOperation)).Result;
 
             return VerificationMapper.ToModel(result);
@@ -77,7 +76,6 @@ namespace Lisa.Verification.Api
             CloudTable table = await GetTable("verifications");
 
             var patchOperation = TableOperation.InsertOrReplace(VerificationMapper.ToEntity(verification));
-
             await table.ExecuteAsync(patchOperation);
 
             return verification;
@@ -98,7 +96,7 @@ namespace Lisa.Verification.Api
             return ApplicationMapper.ToModel(result);
         }
 
-        public async Task<DynamicModel> PostApplication(string application)
+        public async Task<DynamicModel> PostApplication(string application, string secret = "")
         {
             CloudTable table = await GetTable("applications");
 
@@ -106,7 +104,7 @@ namespace Lisa.Verification.Api
             app.PartitionKey = application;
             app.RowKey = application;
             app.Name = application;
-            app.Secret = "";
+            app.Secret = secret;
 
             var insertOperation = TableOperation.Insert(ApplicationMapper.ToEntity(app));
 
