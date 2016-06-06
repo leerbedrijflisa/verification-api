@@ -35,13 +35,13 @@ namespace Lisa.Verification.Api
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] DynamicModel verificationModel)
         {
-            // cast to a dynamic for easier assigning fields
+            // cast to a dynamic for easier assigning of fields
             dynamic verification = verificationModel;
 
             if (verification == null)
                 return new BadRequestResult();
 
-            if (!CompareTokens(await GetSecret(((dynamic)verification).application), Newtonsoft.Json.JsonConvert.SerializeObject(verification), Request.Headers["Authorization"]))
+            if (!CompareTokens(await GetSecret(verification.application), Newtonsoft.Json.JsonConvert.SerializeObject(verification), Request.Headers["Authorization"]))
                 return new UnauthorizedResult();
             
             string guid = Guid.NewGuid().ToString();
@@ -118,10 +118,6 @@ namespace Lisa.Verification.Api
             if (secret == null)
                 return false;
 
-            // use the secret as key when instantiating an HMACSHA256 object
-            byte[] key = System.Text.Encoding.ASCII.GetBytes(secret);
-            hmac = new HMACSHA256(key);
-
             string computedHash = ComputeHash(body, secret);
 
             // compare the stored hash (the has the user sends with the header) to the newly computed hash. 
@@ -132,13 +128,9 @@ namespace Lisa.Verification.Api
 
         private static string ComputeHash(string body, string secret)
         {
-            // uncomment these if you want to see what happens each step when hashing
-            //string bodySecret = Base64Encode(body) + secret;
-            //byte[] bodySecretBytes = System.Text.Encoding.ASCII.GetBytes(bodySecret);
-            //byte[] hash = hmac.ComputeHash(bodySecretBytes);
-            //string hashString = System.Text.Encoding.ASCII.GetString(hash);
-            //string hashed = Base64Encode(hashString);
-            //return hashed;
+            // use the secret as key when instantiating an HMACSHA256 object
+            byte[] key = System.Text.Encoding.ASCII.GetBytes(secret);
+            hmac = new HMACSHA256(key);
 
             // formula = base64(hmacsha256(base64(body) + secret))
             return Base64Encode(System.Text.Encoding.ASCII.GetString(
