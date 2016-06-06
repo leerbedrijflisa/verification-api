@@ -21,24 +21,27 @@ namespace Lisa.Verification.Api
         [HttpGet("{guid:guid}", Name = "getSingle")]
         public async Task<IActionResult> Get(Guid guid)
         {
-            DynamicModel verification = await _db.Fetch(guid.ToString());
+            dynamic verification = await _db.Fetch(guid.ToString());
              
-            if (!CompareTokens(await GetSecret(verification), guid.ToString(), Request.Headers["Authorization"]))
-                return new UnauthorizedResult();
-
             if (verification == null)
                 return new NotFoundResult();
+
+            if (!CompareTokens(await GetSecret(verification.application), guid.ToString(), Request.Headers["Authorization"]))
+                return new UnauthorizedResult();
 
             return new OkObjectResult(verification);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] DynamicModel verification)
+        public async Task<IActionResult> Post([FromBody] DynamicModel verificationModel)
         {
+            // cast to a dynamic for easier assigning fields
+            dynamic verification = verificationModel;
+
             if (verification == null)
                 return new BadRequestResult();
 
-            if (!CompareTokens(await GetSecret(verification), Newtonsoft.Json.JsonConvert.SerializeObject(verification), Request.Headers["Authorization"])))
+            if (!CompareTokens(await GetSecret(((dynamic)verification).application), Newtonsoft.Json.JsonConvert.SerializeObject(verification), Request.Headers["Authorization"]))
                 return new UnauthorizedResult();
             
             string guid = Guid.NewGuid().ToString();
@@ -46,24 +49,21 @@ namespace Lisa.Verification.Api
 
             // temporary dynamic object so you dont have to cast the DynamicModel to a dynamic object 
             // each time you want to assign or retrieve a property
-            dynamic dynamicVerification = verification;
-            dynamicVerification.id = guid;
-            dynamicVerification.status = "pending";
-            if (!(dynamicVerification.expires is DateTime) && dynamicVerification.expires == "")
-                dynamicVerification.expires = DateTime.MaxValue;
+            verification.id = guid;
+            verification.status = "pending";
+            if (!(verification.expires is DateTime) && verification.expires == "")
+                verification.expires = DateTime.MaxValue;
 
             // expire date has already been passed, no point in storing the verification
-            DateTime t1 = dynamicVerification.expires;
+            DateTime t1 = verification.expires;
             if (DateTime.Compare(t1.ToUniversalTime(), DateTime.Now.ToUniversalTime()) < 0)
                 return new UnprocessableEntityObjectResult(verification);
 
-            string appName = dynamicVerification.application;
+            string appName = verification.application;
             DynamicModel app = await _db.FetchApplication(appName);
             if (app == null)
                 return new UnauthorizedResult();
 
-
-            verification = dynamicVerification;
 
             var validationResult = _validator.Validate(verification);
             if (validationResult.HasErrors)
@@ -84,11 +84,11 @@ namespace Lisa.Verification.Api
             dynamic verification = await _db.Fetch(guid.ToString());
             verification.Signed = DateTime.Now;
 
-            if (!CompareTokens(await GetSecret(verification), Newtonsoft.Json.JsonConvert.SerializeObject(patches), Request.Headers["Authorization"]))
-                return new UnauthorizedResult();
-
             if (verification == null)
                 return new NotFoundResult();
+
+            if (!CompareTokens(await GetSecret(verification.application), Newtonsoft.Json.JsonConvert.SerializeObject(patches), Request.Headers["Authorization"]))
+                return new UnauthorizedResult();
 
             if (verification.Status != "pending" || DateTime.Compare(verification.Expires.ToUniversalTime(), verification.Signed.ToUniversalTime()) < 0)
                 return new ForbidResult();
@@ -104,9 +104,9 @@ namespace Lisa.Verification.Api
             return new OkObjectResult(verification);
         }
 
-        public async Task<string> GetSecret(dynamic verification)
+        public async Task<string> GetSecret(string applicationName)
         {
-            dynamic app = await _db.FetchApplication(verification.application);
+            dynamic app = await _db.FetchApplication(applicationName);
 
             if (app == null)
                 return null;
