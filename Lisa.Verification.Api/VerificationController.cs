@@ -16,6 +16,14 @@ namespace Lisa.Verification.Api
             _validator = new VerificationValidator();
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var verifications = await _db.FetchAll();
+
+            return new OkObjectResult(verifications);
+        }
+
         [HttpGet("{guid:guid}", Name = "getSingle")]
         public async Task<IActionResult> Get(Guid guid)
         {
