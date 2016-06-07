@@ -19,8 +19,8 @@ namespace Lisa.Verification.Api
             entity.PartitionKey = model.PartitionKey;
             entity.RowKey = model.RowKey;
 
-            entity.Name = model.Name;
-            entity.Secret = model.Secret;
+            entity.name = model.name;
+            entity.secret = model.secret;
 
             return entity;
         }
@@ -41,8 +41,8 @@ namespace Lisa.Verification.Api
             };
             model.SetMetadata(metadata);
 
-            model.Name = entity.Name;
-            model.Secret = entity.Secret;
+            model.name = entity.name;
+            model.secret = entity.secret;
 
             return model;
         }
