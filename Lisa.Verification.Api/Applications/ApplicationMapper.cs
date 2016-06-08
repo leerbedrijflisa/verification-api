@@ -21,6 +21,7 @@ namespace Lisa.Verification.Api
 
             entity.name = model.name;
             entity.secret = model.secret;
+            entity.comment = model.comment;
 
             return entity;
         }
@@ -34,15 +35,11 @@ namespace Lisa.Verification.Api
 
             dynamic model = new DynamicModel();
 
-            var metadata = new
-            {
-                PartitionKey = entity.PartitionKey,
-                RowKey = entity.RowKey
-            };
-            model.SetMetadata(metadata);
+            model.SetMetadata(new { PartitionKey = entity.PartitionKey, RowKey = entity.RowKey });
 
             model.name = entity.name;
             model.secret = entity.secret;
+            model.comment = entity.comment;
 
             return model;
         }

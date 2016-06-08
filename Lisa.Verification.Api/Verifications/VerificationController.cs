@@ -61,11 +61,6 @@ namespace Lisa.Verification.Api
             if (!(verification.expires is DateTime) && verification.expires == "")
                 verification.expires = DateTime.MaxValue;
 
-            // expire date has already been passed, no point in storing the verification => Error 422
-            DateTime t1 = verification.expires;
-            if (DateTime.Compare(t1.ToUniversalTime(), DateTime.Now.ToUniversalTime()) < 0)
-                return new UnprocessableEntityObjectResult("Invalid field \'expires\': " + t1);
-
             var validationResult = _validator.Validate(verification);
             if (validationResult.HasErrors)
                 return new UnprocessableEntityObjectResult(validationResult.Errors);
@@ -134,16 +129,8 @@ namespace Lisa.Verification.Api
             byte[] key = System.Text.Encoding.ASCII.GetBytes(secret);
             _hmac = new HMACSHA256(key);
 
-            // formula = base64(hmacsha256(base64(body) + secret))
-            return Base64Encode(System.Text.Encoding.ASCII.GetString(
-                _hmac.ComputeHash(System.Text.Encoding.ASCII.GetBytes(
-                    Base64Encode(body) + secret))));
-        }
-
-        private static string Base64Encode(string plainText)
-        {
-            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
-            return Convert.ToBase64String(plainTextBytes);
+            // formula = base64(hmacsha256(body))
+            return Convert.ToBase64String(_hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(body)));
         }
 
         private static HMACSHA256 _hmac;
