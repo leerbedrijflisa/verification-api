@@ -134,7 +134,7 @@ namespace Lisa.Verification.Api
             return computedHash == storedHash;
         }
 
-        private static string ComputeHash(string body, string secret)
+        private string ComputeHash(string body, string secret)
         {
             // use the secret as key when instantiating a new HMACSHA256 object
             byte[] key = System.Text.Encoding.ASCII.GetBytes(secret);
@@ -144,7 +144,7 @@ namespace Lisa.Verification.Api
             return Convert.ToBase64String(_hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(body)));
         }
 
-        private static HMACSHA256 _hmac;
+        private HMACSHA256 _hmac;
         private Database _db;
         private ModelPatcher _modelPatcher;
         private VerificationValidator _validator;
