@@ -1,6 +1,7 @@
 ﻿using Lisa.Common.WebApi;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.IO;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -39,10 +40,13 @@ namespace Lisa.Verification.Api
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] DynamicModel verificationModel)
+        public async Task<IActionResult> Post()
         {
-            // cast to a dynamic for easier assigning of fields
-            dynamic verification = verificationModel;
+            // get the raw body stream
+            string rawBody = new StreamReader(Request.Body).ReadToEnd();
+
+            // Deserialize the raw body to a dynamic verification
+            dynamic verification = Newtonsoft.Json.JsonConvert.DeserializeObject<DynamicModel>(rawBody);
 
             if (verification == null)
                 return new BadRequestResult();
@@ -50,7 +54,7 @@ namespace Lisa.Verification.Api
             if (verification.application == null)
                 return new UnauthorizedResult();
 
-            if (!CompareTokens(await GetSecret(verification.application), Newtonsoft.Json.JsonConvert.SerializeObject(verification), Request.Headers["Authorization"]))
+            if (!CompareTokens(await GetSecret(verification.application), rawBody, Request.Headers["Authorization"]))
                 return new UnauthorizedResult();
             
             string guid = Guid.NewGuid().ToString();
@@ -72,8 +76,15 @@ namespace Lisa.Verification.Api
         }
 
         [HttpPatch("{guid:guid}")]
-        public async Task<IActionResult> Sign([FromBody] Patch[] patches, Guid guid)
+        public async Task<IActionResult> Sign(Guid guid)
         {
+            // get the raw body stream
+            string rawBody = new StreamReader(Request.Body).ReadToEnd();
+
+            // Deserialize the raw body to a Patch array
+            Patch[] patches = Newtonsoft.Json.JsonConvert.DeserializeObject<Patch[]>(rawBody);
+
+
             if (patches == null)
                 return new BadRequestResult();
 
@@ -84,7 +95,7 @@ namespace Lisa.Verification.Api
 
             verification.Signed = DateTime.Now;
 
-            if (!CompareTokens(await GetSecret(verification.application), Newtonsoft.Json.JsonConvert.SerializeObject(patches), Request.Headers["Authorization"]))
+            if (!CompareTokens(await GetSecret(verification.application), rawBody, Request.Headers["Authorization"]))
                 return new UnauthorizedResult();
 
             if (verification.Status != "pending" || DateTime.Compare(verification.Expires.ToUniversalTime(), verification.Signed.ToUniversalTime()) < 0)
