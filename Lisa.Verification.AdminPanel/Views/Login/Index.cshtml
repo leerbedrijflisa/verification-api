@@ -1,0 +1,37 @@
+﻿@{
+    Layout = null;
+}
+
+@{
+    ViewBag.Title = "Login";
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>All applications</title>
+    <link href="@Url.Content("~/Style/all.css")" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    @RenderPage("../header.cshtml")
+    @RenderPage("../errors.cshtml")
+    <div>
+        @model UserEntity
+        @using (Html.BeginForm("Login", "Login", FormMethod.Post, new { ReturnUrl = ViewBag.ReturnUrl }))
+        {
+            <h2>Please sign in</h2>
+            <div>
+                @Html.DisplayNameFor(model => model.UserName)
+                @Html.EditorFor(model => model.UserName)
+            </div>
+            <div>
+                @Html.DisplayNameFor(model => model.Password)
+                @Html.PasswordFor(model => model.Password)
+            </div>
+            <button type="submit">Sign in</button>
+        }
+    </div>
+</body>
+</html>

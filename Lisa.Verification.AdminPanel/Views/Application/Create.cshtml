@@ -1,0 +1,39 @@
+﻿@{
+    Layout = null;
+}
+
+@{
+    ViewBag.Title = "All applications";
+}
+
+
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>All applications</title>
+    <link href="@Url.Content("~/Style/all.css")" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    @RenderPage("../header.cshtml")
+    @RenderPage("../errors.cshtml")
+
+
+    <h2>New application</h2>
+    <div>
+        <form action="/Application/Save" method="post">
+            <label for="Name">Name: </label>
+            <input id="Name" name="Name" type="Text" value="" />
+            <br />
+
+            <label for="Comment">Comment: </label>
+            <input id="Comment" name="Comment" type="Text" value=""/>
+            <br />
+
+            <input type="submit" value="Create" />
+        </form>
+    </div>
+</body>
+</html>

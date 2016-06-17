@@ -42,10 +42,11 @@ namespace Lisa.Verification.Api
         [HttpPost]
         public async Task<IActionResult> Post()
         {
-            // get the raw body stream
+            // get the raw body from the stream, instead of a ([FromBody]DynamicModel verification) parameter
+            // so we can use the raw body string for hashing (because whitespaces get lost if you use [FromBody])
+            // and then Deserialize the raw body string to a DynamicModel to post to the database
             string rawBody = new StreamReader(Request.Body).ReadToEnd();
 
-            // Deserialize the raw body to a dynamic verification
             dynamic verification = Newtonsoft.Json.JsonConvert.DeserializeObject<DynamicModel>(rawBody);
 
             if (verification == null)
@@ -137,7 +138,7 @@ namespace Lisa.Verification.Api
         private string ComputeHash(string body, string secret)
         {
             // use the secret as key when instantiating a new HMACSHA256 object
-            byte[] key = System.Text.Encoding.ASCII.GetBytes(secret);
+            byte[] key = System.Text.Encoding.UTF8.GetBytes(secret);
             _hmac = new HMACSHA256(key);
 
             // formula = base64(hmacsha256(body))

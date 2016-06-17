@@ -1,0 +1,42 @@
+﻿@{
+    Layout = null;
+}
+
+@{
+    ViewBag.Title = "All applications";
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>All applications</title>
+    <link href="@Url.Content("~/Style/all.css")" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    @RenderPage("../header.cshtml")
+    @RenderPage("../errors.cshtml")
+
+    <h2>All applications</h2>
+    <ul class="apps">
+        @foreach (var app in Model)
+        {
+            <li>
+                <div class="content">
+                    <p><span class="name">Name: @app.Name</span> Secret: <span class="secret">@app.Secret</span></p>
+                    @if (app.Comment != "")
+                    {
+                        <p>Commentaar: @app.Comment</p>
+                    }
+                </div>
+                <div class="buttons">
+                    @Html.ActionLink("Delete", "Delete", new { Name = app.Name }, new { onclick = "return confirm('Are you sure you want to delete this application?');" })
+                    <br />
+                    @Html.ActionLink("New secret", "UpdateSecret", new { Name = app.Name }, null)
+            </div>
+            </li>
+        }
+    </ul>
+</body>
+</html>

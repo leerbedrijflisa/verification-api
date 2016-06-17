@@ -1,4 +1,4 @@
-﻿namespace Lisa.Verification.Api
+﻿namespace Lisa.Verification.AdminPanel
 {
     public class TableStorageSettings
     {
