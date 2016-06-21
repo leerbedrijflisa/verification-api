@@ -37,9 +37,9 @@ namespace Lisa.Verification.Api
 
             model.SetMetadata(new { PartitionKey = entity.PartitionKey, RowKey = entity.RowKey });
 
-            model.name = entity.name;
-            model.secret = entity.secret;
-            model.comment = entity.comment;
+            model.Name = entity.Name;
+            model.Secret = entity.Secret;
+            model.Comment = entity.Comment;
 
             return model;
         }
